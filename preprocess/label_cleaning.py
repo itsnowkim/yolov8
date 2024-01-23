@@ -1,82 +1,64 @@
 import cv2
-import glob
+import json
 import os
 import numpy as np
+import glob
 from tqdm import tqdm
-
-def find_scope_video(video_path):
-    pass
-
-def find_scope_img_cv(img_path):
-    if isinstance(img_path, str):
-        image = cv2.imread(img_path)
-    else:
-        image = img_path
-
-    # 그레이 스케일로 변환합니다.
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-
-    # 엣지 검출을 수행합니다.
-    edges = cv2.Canny(gray, 50, 150)
-
-    # 컨투어를 찾습니다.
-    contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-    # 가장 큰 컨투어를 찾습니다.
-    if contours:
-        largest_contour = max(contours, key=cv2.contourArea)
-        
-        # 컨투어에 내접하는 원이 아닌 외접하는 사각형을 구합니다.
-        x, y, w, h = cv2.boundingRect(largest_contour)
-        
-        # 이미지를 사각형 영역으로 자릅니다.
-        crop_img = image[y:y+h, x:x+w]
-
-        # 바운딩 박스를 다른 색상으로 그립니다.
-        cv2.rectangle(image, (x, y), (x + w, y + h), (255, 0, 0), 2)
-
-    cv2.imshow('img', image)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
-    # 결과 이미지와 crop 된 이미지 return
-    return image, crop_img
 
 def find_scope_img_man(img_path):
     image = cv2.imread(img_path)
 
     h, w, _ = image.shape
-    # 이미지의 중심 좌표
-    y = h//2
-    x = w //2
-    # 반지름 길이
+    y = h // 2
+    x = w // 2
     r = y
-    # offset
     offset = 10
+    dist = r + offset
 
-    crop_img = image[0:h, x-r-offset:x+r+offset]
+    crop_img = image[0:h, x-dist:x+dist]
+    imgheight, imgwidth, _ = crop_img.shape
+    label = organize_label(imgheight, imgwidth, img_path=img_path, x=x, y=y, dist=dist)
 
-    return crop_img
+    return crop_img, label
 
-def process_imgs(target_dir):
-    # 루트 디렉토리 하위의 모든 .png 파일을 찾음
-    for img_path in tqdm(glob.glob(os.path.join(target_dir, '**/*.png'), recursive=True)):
-        # scope 영역을 찾고, 해당 영역으로 crop
-        image, crop_img = find_scope_img_cv(img_path)
+def organize_label(imgheight, imgwidth, img_path, x, y, dist):
+    label_path = os.path.splitext(img_path)[0] + '.json'
 
-        # cv2.imwrite('result.png', image)
-        # cv2.imwrite('cropped_result.png', crop_img)
+    with open(label_path, 'r') as file:
+        label_data = json.load(file)
 
-        # 이미지를 640x640으로 리사이즈
-        resized_image = cv2.resize(crop_img, (640, 640))
+        # 예를 들어 라벨 데이터가 바운딩 박스의 좌표를 포함하고 있다고 가정
+        # 라벨 데이터 구조에 따라 조정 필요
+        for item in label_data['shapes']:
+            # item['points']는 라벨의 좌표 리스트를 포함
+            for point in item['points']:
+                # 이미지를 중심으로 크롭했기 때문에 x 좌표를 조정
+                point[0] -= (x - dist)
 
-        # 리사이즈된 이미지를 원래 파일에 덮어씀
-        cv2.imwrite(img_path, resized_image)
+        # labelPath 필드 수정
+        label_data['imagePath'] = img_path.split('\\')[-1].split('.')[0] + '_cropped.png'
+
+        # img 크기 필드 수정
+        label_data['imageHeight'] = imgheight
+        label_data['imageWidth'] = imgwidth
+
+    return label_data
 
 if __name__ == "__main__":
-    # target dir 내의 img 를 processing
-    # process_imgs(target_dir='../dataset_cleaned')
+    # 루트 디렉토리 설정
+    dataset_root_dir = '../train'
+    # 새로 저장될 디렉토리
+    dest_dir = '../dataset_clean'
 
-    # find_scope_img_cv('../dataset_cleaned/test/images/00177442_003649.png')
+    # 루트 디렉토리 하위의 모든 .jpeg 파일을 찾음
+    for img_path in tqdm(glob.glob(os.path.join(dataset_root_dir, '**/*.jpeg'), recursive=True)):
+        img, label = find_scope_img_man(img_path)
+        
+        # 새 이미지 저장
+        cropped_img_path = os.path.join(dest_dir, img_path.split('\\')[-1].split('.')[0] + '_cropped.png')
+        cv2.imwrite(cropped_img_path, img)
 
-    crop_img = find_scope_img_man('../dataset_cleaned/test/images/00177442_003649.png')
-
+        # 업데이트된 라벨 파일 저장
+        updated_label_path = os.path.join(dest_dir, img_path.split('\\')[-1].split('.')[0] + '_cropped.json')
+        with open(updated_label_path, 'w') as file:
+            json.dump(label, file, indent=4)
