@@ -73,7 +73,11 @@ if __name__ == "__main__":
             continue
         
         # Inference the model
-        results = model(img_path)
+        try:
+            results = model(img_path, verbose=False)
+        except Exception as e:
+            print(f"img : {img_name}\nerror : {e}\n")
+            continue
         
         # output 으로 json 파일 만들기
         construct_json(results, img_path, output_dir)
