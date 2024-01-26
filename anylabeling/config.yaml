@@ -1,0 +1,18 @@
+type: yolov8
+name: yolov8m-baseline
+display_name: YOLOv8m Custom
+model_path: C:\Users\taesh\Documents\GitHub\yolov8\runs\segment\baseline\weights\best.onnx
+confidence_threshold: 0.45
+input_height: 640
+input_width: 640
+nms_threshold: 0.45
+score_threshold: 0.5
+classes:
+- BF
+- LF
+- Fat
+- Bone
+- Dura
+- Instrument
+- Vessel
+- Care
