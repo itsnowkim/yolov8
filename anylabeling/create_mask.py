@@ -59,7 +59,7 @@ def construct_json(results, img_name, output_dir):
 
 if __name__ == "__main__":
     # Load a model
-    model = YOLO("../runs/segment/baseline/weights/best.pt")  # 모델 경로 수정
+    model = YOLO("../runs/segment/train12/weights/best.pt")  # 모델 경로 수정
     
     source = 'source'  # 소스 이미지 경로 수정
     output_dir = 'source'  # 출력 JSON 파일 경로 수정

@@ -5,3 +5,6 @@ dataset_cleaned
 runs
 *.mp4
 anylabeling/source
+dataset_aug_random
+dataset_aug
+__pycache__
